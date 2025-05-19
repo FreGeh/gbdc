@@ -32,9 +32,10 @@ class CNFFormula {
     For formula;
     unsigned variables;
     unsigned total_literals;
+    unsigned max_clause_len;
 
  public:
-    CNFFormula() : formula(), variables(0) { }
+    CNFFormula() : variables(0), total_literals(0), max_clause_len(0) { }
 
     explicit CNFFormula(const char* filename) : CNFFormula() {
         readDimacsFromFile(filename);
@@ -72,12 +73,51 @@ class CNFFormula {
         return formula.size();
     }
 
+    inline size_t maxClauseLength() const {
+        return max_clause_len;
+    }
+
     inline int newVar() {
         return ++variables;
     }
 
     inline void clear() {
+        for (Cl* clause_ptr : formula) {
+            delete clause_ptr;
+        }
         formula.clear();
+        variables = 0;
+        total_literals = 0;
+        max_clause_len = 0;
+    }
+
+    // generic approach
+    struct Clause {
+        Cl::const_iterator b, e;
+        auto begin() const { return b; }
+        auto end() const { return e; }
+        unsigned size() const { return e - b; }
+    };
+    struct ClauseIt {
+        For::const_iterator it;
+        Clause operator*() const { 
+            return Clause{(*it)->begin(), (*it)->end()};
+        }
+        ClauseIt& operator++() { 
+            ++it; 
+            return *this; 
+        }
+        bool operator!=(const ClauseIt& o) const { 
+            return it != o.it; 
+        }
+    };
+    struct ClauseRange {
+        ClauseIt b, e;
+        ClauseIt begin() const { return b; }
+        ClauseIt end() const { return e; }
+    };
+    ClauseRange clauses() const { 
+        return {{formula.begin()}, {formula.end()}}; 
     }
 
     // create gapless representation of variables
@@ -143,10 +183,15 @@ class CNFFormula {
             }
             clause->resize(clause->size() - dup);
             clause->shrink_to_fit();
+
+            // Stat Updates
             variables = std::max(variables, (unsigned int)clause->back().var());
             total_literals += clause->size();
+            max_clause_len = std::max(max_clause_len, (unsigned)clause->size());
+
+            // Add Clause
+            formula.push_back(clause);
         }
-        formula.push_back(clause);
     }
 };
 
