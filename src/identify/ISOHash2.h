@@ -35,7 +35,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <unistd.h>
 
 #define XXH_INLINE_ALL
-#include "xxhash.h"
+#include "src/external/xxhash/xxhash.h"
 
 #include "src/util/CNFFormula.h" // Includes SolverTypes::Lit
 
@@ -52,19 +52,19 @@ namespace CNF {
 
 // Data Structures & Config
 struct WLHRuntimeConfig {
-    unsigned depth;
-    bool cross_reference_literals;
-    bool rehash_clauses;
-    bool optimize_first_iteration;
-    unsigned progress_iteration;
-    bool return_measurements;
-    bool sort_for_clause_hash;
+    unsigned depth = 13;
+    bool cross_reference_literals = true;
+    bool rehash_clauses = true;
+    bool optimize_first_iteration = true;
+    unsigned progress_iteration = 6;
+    bool return_measurements = true;
+    bool sort_for_clause_hash = false;
 };
 
 template<typename HashType>
 struct LitColorsTpl {
-    HashType p = 0;
-    HashType n = 0;
+    HashType p;
+    HashType n;
     inline void flip() { std::swap(n, p); }
     template <typename Hasher>
     inline void cross_reference(const Hasher& h) {
@@ -229,7 +229,7 @@ struct WeisfeilerLemanHasher {
         for (size_t i = 1; i < old_color().colors.size(); ++i) { // Iterate actual variables
             const Hash var_h = old_color().colors[i].variable_hash(hasher_func);
             unique_hashes.insert(var_h);
-            combine_hash(current_variables_hash_sum, var_h);
+            combine_hash(&current_variables_hash_sum, var_h);
         }
         if (unique_hashes.size() <= previous_unique_hashes) return current_variables_hash_sum;
         previous_unique_hashes = unique_hashes.size();
@@ -294,20 +294,9 @@ struct WeisfeilerLemanHasher {
  * @return comma separated list, std::string Weisfeiler-Leman hash,
  * possibly measurements
  */
-std::string weisfeiler_leman_hash(
-    const char* filename,
-    const unsigned depth = 13,
-    const bool cross_reference_literals = true,
-    const bool rehash_clauses = true,
-    const bool optimize_first_iteration = true,
-    const unsigned progress_check_iteration = 6,
-    const bool return_measurements = true,
-    const bool sort_for_clause_hash = false)
+std::string weisfeiler_leman_hash(const char* filename)
 {
-    CNF::WLHRuntimeConfig cfg{
-        depth, cross_reference_literals, rehash_clauses, optimize_first_iteration,
-        progress_check_iteration, return_measurements, sort_for_clause_hash,
-    };
+    CNF::WLHRuntimeConfig cfg{};
     CNF::WeisfeilerLemanHasher<CNFFormula> hasher(filename, cfg);
     return hasher();
 }
