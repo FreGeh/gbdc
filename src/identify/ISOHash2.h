@@ -33,6 +33,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <memory>
 #include <fstream>
 #include <unistd.h>
+#include <iomanip>
 
 #define XXH_INLINE_ALL
 #include "src/external/xxhash/xxhash.h"
@@ -48,6 +49,14 @@ long get_mem_usage() {
     return resident * sysconf(_SC_PAGE_SIZE);
 }
 
+template<class UInt>
+std::string to_hex(UInt v) {
+    std::ostringstream oss;
+    oss << std::hex << std::setfill('0')
+        << std::setw(sizeof(UInt)*2) << v;
+    return oss.str();
+}
+
 namespace CNF {
 
 // Data Structures & Config
@@ -57,7 +66,7 @@ struct WLHRuntimeConfig {
     bool rehash_clauses = true;
     bool optimize_first_iteration = true;
     unsigned progress_iteration = 6;
-    bool return_measurements = true;
+    bool return_measurements = false;
     bool sort_for_clause_hash = false;
 };
 
@@ -245,8 +254,9 @@ struct WeisfeilerLemanHasher {
         return (cfg.depth % 2 == 0) ? calculate_variables_hash() : calculate_cnf_hash();
     }
 
+    // hash generation
     std::string operator()() {
-        std::string result_hash_str = std::to_string(execute_wl_algorithm());
+        std::string result_hash_str = to_hex(execute_wl_algorithm());
         if (cfg.return_measurements) {
             const auto calculation_end_time = Clock::now();
             const auto calculation_time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(calculation_end_time - start_time).count();
@@ -264,7 +274,7 @@ struct WeisfeilerLemanHasher {
                 "," + std::to_string(cnf.nVars()) +
                 "," + std::to_string(cnf.nClauses()) +
                 "," + std::to_string(cnf.nLits()) +
-                "," + std::to_string(cnf.maxClauseLength());
+                "," + std::to_string(cnf.maxClauseLength());     
         }
         return result_hash_str;
     }
@@ -294,7 +304,7 @@ struct WeisfeilerLemanHasher {
  * @return comma separated list, std::string Weisfeiler-Leman hash,
  * possibly measurements
  */
-std::string weisfeiler_leman_hash(const char* filename)
+std::string isohash2(const char* filename)
 {
     CNF::WLHRuntimeConfig cfg{};
     CNF::WeisfeilerLemanHasher<CNFFormula> hasher(filename, cfg);

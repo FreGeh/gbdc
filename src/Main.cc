@@ -122,7 +122,7 @@ int main(int argc, char** argv) {
         } 
         else if (toolname == "isohash2") {
             if (ext == ".cnf") {
-                std::cout << CNF::weisfeiler_leman_hash(filename.c_str()) << std::endl;
+                std::cout << CNF::isohash2(filename.c_str()) << std::endl;
             }
         } 
         else if (toolname == "normalize") {
